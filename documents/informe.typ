@@ -1,16 +1,20 @@
-#set text(font: "Ubuntu")
+#import "@preview/ilm:2.0.0": *
+
+#set text(lang: "es")
 #set figure(supplement: "Figura")
 
-#set document(
+#show: ilm.with(
   title: "Buscador Web",
-  author: "Alejandro Antelo Fashoro"
+  authors: "Alejandro Antelo Fashoro",
+  date: datetime.today(),
+  date-format: "[day] / [month] / [year repr:full]",
+  raw-text: "use-typst-default",
+  table-of-contents: none,
+  external-link-circle: false,
+  chapter-pagebreak: false,
+  footer: "page-number-center",
+  paper-size: "a4"
 )
-
-#title()
-
-= Miembros del grupo
-
-Alejandro Antelo Fashoro
 
 = Implementaciones
 
