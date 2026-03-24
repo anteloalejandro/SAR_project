@@ -5,7 +5,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, overload
 import pickle
 import nltk
 from SAR_semantics import SentenceBertEmbeddingModel, BetoEmbeddingCLSModel, BetoEmbeddingModel, SpacyStaticModel
@@ -357,19 +357,38 @@ class SAR_Indexer:
 
         """
 
+        valid_substring = re.compile(r"/[\w\s]+/")
+        separator = re.compile(r"\s+")
+
+        # calcula el Id del documento y guarda el nombre del fichero asociado.
+        # se asume que no se llamará a esta función dos veces para el mismo documento.
+        docid = len(self.docs)
+        self.docs[docid] = filename
+
+        artid_base = len(self.articles)
+
+        # itera por los artículos de un fichero
         for i, line in enumerate(open(filename)):
-            j = self.parse_article(line)
+            # calcula el Id global del artículo
+            artid = (artid_base+i)
+            # guarda el índice del documento y la posición relativa en él
+            self.articles[artid] = {
+                "document": docid,
+                "relative_position": i,
+            }
 
+            article = self.parse_article(line)
+            content = article[self.DEFAULT_FIELD]
+            cleaned = "\n".join(valid_substring.findall(content)).lower()
 
-        #
-        # 
-        # Solo se debe indexar el contenido self.DEFAULT_FIELD
-        #
-        #
-        #
-        #################
-        ### COMPLETAR ###
-        #################
+            # extrae los términos de la cadena ya limpiada
+            terms: list[str] = list(filter(lambda t: type(t) is str and t != "", separator.split(cleaned)))
+
+            for term in terms:
+                if term not in self.index:
+                    self.index[term] = PostingList()
+
+                self.index[term].add_posting(article)
 
 
     def tokenize(self, text:str):
@@ -516,13 +535,8 @@ class SAR_Indexer:
         return: posting list con los artid incluidos en p1 y p2
 
         """
-        
-        pass
-        ########################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES ##
-        ########################################
 
-
+        return PostingList(p1) & PostingList(p2)
 
 
 
@@ -608,5 +622,67 @@ class SAR_Indexer:
         ################
 
 
+
+class PostingList:
+    postings: list[int]
+
+    def __init__(self, postings = []):
+        self.postings = postings
+
+    def __and__(self, other: "PostingList"):
+        """
+        Sobrecarga el operador "&"
+        """
+        output = PostingList()
+        a = self.postings
+        b = other.postings
+        i = j = 0 # índices de `a` y `b`, respectivamente
+
+        while i < len(a) and j < len(b):
+            if a[i] > b[j]:
+                j += 1
+            elif a[i] < b[j]:
+                i += 1
+            else: # si son iguales
+                output.add_posting(a[i])
+                i += 1
+                j += 1
+
+        return output
+
+    def __sub__(self, other: "PostingList"):
+        """
+        Sobrecarga el operador "-"
+        """
+        output = PostingList()
+        a = self.postings
+        b = other.postings
+        i = j = 0 # índices de `a` y `b`, respectivamente
+
+        while i < len(a) and j < len(b):
+            if a[i] > b[j]:
+                # está en B y no en A
+                i += 1
+            elif a[i] < b[j]:
+                # está en A y no en B
+                output.add_posting(a[i])
+                j += 1
+            else: # son iguales
+                # está en A y en B
+                i += 1
+                j += 1
+
+        # si quedan elementos en A pero no en B, se añaden todos
+        for k in range(i, len(a)):
+            output.add_posting(a[k])
+
+        return output
+
+    def add_posting(self, posting: int):
+        """
+        Se asume que no se va a llamar a la misma instancia de `PostingList`
+        con el mismo valor de `posting`
+        """
+        self.postings.append(posting)
 
 
