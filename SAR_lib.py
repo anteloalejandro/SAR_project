@@ -61,9 +61,9 @@ class SAR_Indexer:
 
         """
         self.urls = set() # hash para las urls procesadas,
-        self.index = {} # hash para el indice invertido de terminos --> clave: termino, valor: posting list
-        self.docs = {} # diccionario de terminos --> clave: entero(docid),  valor: ruta del fichero.
-        self.articles = {} # hash de articulos --> clave entero (artid), valor: la info necesaria para diferencia los artículos dentro de su fichero
+        self.index: Dict[str, PostingList] = {} # hash para el indice invertido de terminos --> clave: termino, valor: posting list
+        self.docs: Dict[int, str] = {} # diccionario de terminos --> clave: entero(docid),  valor: ruta del fichero.
+        self.articles: Dict[int, Dict[str, int]] = {} # hash de articulos --> clave entero (artid), valor: la info necesaria para diferencia los artículos dentro de su fichero
         self.tokenizer = re.compile(r"\W+") # expresion regular para hacer la tokenizacion
         self.show_all = False # valor por defecto, se cambia con self.set_showall()
 
@@ -357,9 +357,6 @@ class SAR_Indexer:
 
         """
 
-        valid_substring = re.compile(r"/[\w\s]+/")
-        separator = re.compile(r"\s+")
-
         # calcula el Id del documento y guarda el nombre del fichero asociado.
         # se asume que no se llamará a esta función dos veces para el mismo documento.
         docid = len(self.docs)
@@ -379,10 +376,9 @@ class SAR_Indexer:
 
             article = self.parse_article(line)
             content = article[self.DEFAULT_FIELD]
-            cleaned = "\n".join(valid_substring.findall(content)).lower()
 
             # extrae los términos de la cadena ya limpiada
-            terms: list[str] = list(filter(lambda t: type(t) is str and t != "", separator.split(cleaned)))
+            terms = self.tokenize(content)
 
             for term in terms:
                 if term not in self.index:
@@ -426,8 +422,6 @@ class SAR_Indexer:
         print(f"\tNumber of tokens in '{self.DEFAULT_FIELD}': {len(self.index)}")
         print(f"Positional queries are {'allowed' if self.positional else 'NOT allowed'}.")
         print( "=" * width)
-
-        pass
 
 
 

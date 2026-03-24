@@ -58,13 +58,11 @@ Por cada artículo se tiene que generar otra ID incremental con la que identific
 
 Haciendo uso del método ```python parse_article()``` de ```python SAR_Indexer``` se pasan los objetos JSON a un ```python Dict[str,str]``` que tiene, entre otras, la clave `all`, cuyo valor es la *combinación de todas las cadenas de texto* (título, resumen, secciones, etc.) separadas por un salto de línea. Precisamente el valor de la clave `all` es la cadena a tokenizar por defecto.
 
-Para tokenizar la cadena se siguen los siguientes pasos:
+Para procesar la cadena se siguen los siguientes pasos
 
-+ Se limpia esta única cadena de texto eliminando todos los caracteres no alfanuméricos, exceptuando los delimitadores de términos (espacio, salto de línea y tabulador). Para ello extrae todo lo que encaja con la expresión regular ```re /[\w\s]+/``` y se aúna en una nueva cadena.
++ Se limpia y tokeniza la cadena usando ```python self.tokenize()```, lo que resulta en una lista de términos.
 
-+ Tras limpiar la cadena, se pasa a minúscula, y se separa en términos en base a los delimitadores ```re \s+```, obviando los términos vacíos.
-
-+ Para cada uno de los términos del artículo, se actualiza la ```python PostingList``` de su entrada en el índice invertido ```python self.index``` con el artículo en el que se ha encontrado el término. Así, se consigue un índice invertido con el que sacar a qué documentos pertenece cada término.
++ Para cada uno de los términos del artículo, se actualiza la ```python PostingList``` de su entrada en el índice invertido ```python self.index``` con el artículo en el que se ha encontrado el término. Así, se consigue un índice invertido con el que sacar a qué artículos pertenece cada término.
 
 La ```python PostingList``` se ha definido en una clase aparte para ofrecer una interfaz consistente en caso de que hubiese que cambiar a futuro su estructura interna.
 
