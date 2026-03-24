@@ -1,5 +1,7 @@
 # SAR Web browser
 
+Project for the SAR (*Information Storage and Retrieval Systems*) course of the Universitat Politècnica de València
+
 ## Dev Environment
 
 The python virtual envirnoment is located on [`.venv`](.venv).
