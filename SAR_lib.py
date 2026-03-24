@@ -388,7 +388,7 @@ class SAR_Indexer:
                 if term not in self.index:
                     self.index[term] = PostingList()
 
-                self.index[term].add_posting(article)
+                self.index[term].insert(article)
 
 
     def tokenize(self, text:str):
@@ -644,7 +644,7 @@ class PostingList:
             elif a[i] < b[j]:
                 i += 1
             else: # si son iguales
-                output.add_posting(a[i])
+                output.insert(a[i])
                 i += 1
                 j += 1
 
@@ -665,7 +665,7 @@ class PostingList:
                 i += 1
             elif a[i] < b[j]:
                 # está en A y no en B
-                output.add_posting(a[i])
+                output.insert(a[i])
                 j += 1
             else: # son iguales
                 # está en A y en B
@@ -674,15 +674,20 @@ class PostingList:
 
         # si quedan elementos en A pero no en B, se añaden todos
         for k in range(i, len(a)):
-            output.add_posting(a[k])
+            output.insert(a[k])
 
         return output
 
-    def add_posting(self, posting: int):
+    def insert(self, posting: int):
         """
+        Inserta el posting de forma ordenada
+
         Se asume que no se va a llamar a la misma instancia de `PostingList`
         con el mismo valor de `posting`
         """
-        self.postings.append(posting)
+        i = 0
+        while posting > self.postings[i] and i < len(self.postings):
+            i += 1
+        self.postings.insert(i, posting)
 
 

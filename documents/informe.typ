@@ -68,6 +68,8 @@ Para tokenizar la cadena se siguen los siguientes pasos:
 
 La ```python PostingList``` se ha definido en una clase aparte para ofrecer una interfaz consistente en caso de que hubiese que cambiar a futuro su estructura interna.
 
+Esta clase contiene una lista de enteros y un método ```python insert()``` que inserta de forma ordenada un `posting` de forma ordenada. No comprueba si hay repeticiones porque, de momento, no se llama al método de una instancia de `PostingList` dos veces con el mismo argumento.
+
 == Similitud semántica
 
 === Función ```python update_chunks()```
