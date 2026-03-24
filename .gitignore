@@ -1,3 +1,4 @@
 .venv/
 documents/informe.pdf
 __pycache__/
+output/

@@ -639,6 +639,8 @@ class PostingList:
         output = PostingList()
         a = self.postings
         b = other.postings
+        a.sort()
+        b.sort()
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
@@ -660,6 +662,8 @@ class PostingList:
         output = PostingList()
         a = self.postings
         b = other.postings
+        a.sort()
+        b.sort()
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
@@ -688,9 +692,6 @@ class PostingList:
         Se asume que no se va a llamar a la misma instancia de `PostingList`
         con el mismo valor de `posting`
         """
-        i = 0
-        while i < len(self.postings) and posting > self.postings[i]:
-            i += 1
-        self.postings.insert(i, posting)
+        self.postings.append(posting)
 
 
