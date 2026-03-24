@@ -1,2 +1,3 @@
 .venv/
 documents/informe.pdf
+__pycache__/

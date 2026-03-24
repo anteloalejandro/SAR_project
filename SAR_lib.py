@@ -388,7 +388,7 @@ class SAR_Indexer:
                 if term not in self.index:
                     self.index[term] = PostingList()
 
-                self.index[term].insert(article)
+                self.index[term].insert(artid)
 
 
     def tokenize(self, text:str):
@@ -415,10 +415,19 @@ class SAR_Indexer:
         Muestra estadisticas de los indices
 
         """
+
+        width = 40
+        print( "=" * width)
+        print(f"Number of indexed files: {len(self.docs)}")
+        print( "-" * width)
+        print(f"Number of indexed articles: {len(self.articles)}")
+        print( "-" * width)
+        print( "TOKENS:")
+        print(f"\tNumber of tokens in '{self.DEFAULT_FIELD}': {len(self.index)}")
+        print(f"Positional queries are {'allowed' if self.positional else 'NOT allowed'}.")
+        print( "=" * width)
+
         pass
-        ########################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES ##
-        ########################################
 
 
 
@@ -686,7 +695,7 @@ class PostingList:
         con el mismo valor de `posting`
         """
         i = 0
-        while posting > self.postings[i] and i < len(self.postings):
+        while i < len(self.postings) and posting > self.postings[i]:
             i += 1
         self.postings.insert(i, posting)
 
