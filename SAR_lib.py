@@ -420,6 +420,7 @@ class SAR_Indexer:
         print( "-" * width)
         print( "TOKENS:")
         print(f"\tNumber of tokens in '{self.DEFAULT_FIELD}': {len(self.index)}")
+        print( "-" * width)
         print(f"Positional queries are {'allowed' if self.positional else 'NOT allowed'}.")
         print( "=" * width)
 
@@ -453,6 +454,8 @@ class SAR_Indexer:
         return: posting list con el resultado de la query
 
         """
+
+        print(query)
         
         if query is None or len(query) == 0:
             return []
@@ -619,6 +622,7 @@ class SAR_Indexer:
         return: el numero de artículo recuperadas, para la opcion -T
 
         """
+        self.solve_query(query)
         pass
         ################
         ## COMPLETAR  ##
@@ -627,20 +631,18 @@ class SAR_Indexer:
 
 
 class PostingList:
-    postings: list[int]
 
     def __init__(self, postings = []):
         self.postings = postings
+        self.sorted = False
 
     def __and__(self, other: "PostingList"):
         """
         Sobrecarga el operador "&"
         """
         output = PostingList()
-        a = self.postings
-        b = other.postings
-        a.sort()
-        b.sort()
+        a = self.get()
+        b = other.get()
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
@@ -660,10 +662,8 @@ class PostingList:
         Sobrecarga el operador "-"
         """
         output = PostingList()
-        a = self.postings
-        b = other.postings
-        a.sort()
-        b.sort()
+        a = self.get()
+        b = other.get()
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
@@ -692,6 +692,14 @@ class PostingList:
         Se asume que no se va a llamar a la misma instancia de `PostingList`
         con el mismo valor de `posting`
         """
+        self.sorted = False
         self.postings.append(posting)
 
+    def get(self):
+        self.sort()
+        return self.postings
 
+    def sort(self):
+        if not self.sorted:
+            self.sort()
+            self.sorted = True
