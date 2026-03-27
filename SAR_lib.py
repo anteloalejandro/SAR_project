@@ -377,14 +377,17 @@ class SAR_Indexer:
             article = self.parse_article(line)
             content = article[self.DEFAULT_FIELD]
 
-            # extrae los términos de la cadena ya limpiada
-            terms = self.tokenize(content)
+            # extrae los términos de la cadena ya limpiada, quitando repetidos
+            terms = set(self.tokenize(content))
 
             for term in terms:
                 if term not in self.index:
                     self.index[term] = PostingList()
 
                 self.index[term].insert(artid)
+
+            # BUG: se añaden todos los artid múltiples veces, pero sólo debería estar "49" una sóla vez
+            print(self.index["dross"].get() if "dross" in self.index else None)
 
 
     def tokenize(self, text:str):
@@ -494,13 +497,14 @@ class SAR_Indexer:
         else:
             return []
 
+        # se asume que "NOT" no aparecerá al principio de la consulta
         for q in queries:
-            if q not in self.index:
-                return []
-
             if q == "NOT":
-                q = next(queries)
-                posting_list_acc -= self.index[q]
+                q = next(queries) # fallará si "NOT" no va seguido de nada
+                if q in self.index:
+                    posting_list_acc -= self.index[q]
+            elif q not in self.index:
+                return []
             else:
                 posting_list_acc &= self.index[q]
         
@@ -664,18 +668,18 @@ class SAR_Indexer:
         return: el numero de artículo recuperadas, para la opcion -T
 
         """
-        self.solve_query(query)
-        pass
-        ################
-        ## COMPLETAR  ##
-        ################
+
+        result = len(self.solve_query(query))
+        print(f"{query}\t{result}")
+
+        return result
 
 
 
 class PostingList:
 
-    def __init__(self, postings = []):
-        self.postings = postings
+    def __init__(self, postings = None):
+        self.postings = postings if postings is not None else []
         self.sorted = False
 
     def __and__(self, other: "PostingList"):
@@ -711,11 +715,11 @@ class PostingList:
         while i < len(a) and j < len(b):
             if a[i] > b[j]:
                 # está en B y no en A
-                i += 1
+                j += 1
             elif a[i] < b[j]:
                 # está en A y no en B
                 output.insert(a[i])
-                j += 1
+                i += 1
             else: # son iguales
                 # está en A y en B
                 i += 1
@@ -743,5 +747,5 @@ class PostingList:
 
     def sort(self):
         if not self.sorted:
-            self.sort()
+            self.postings.sort()
             self.sorted = True
