@@ -438,6 +438,30 @@ class SAR_Indexer:
     ###                             ###
     ###################################
 
+    def parse_query(self, query):
+        """
+        Convierte la consulta en una lista de strings en la que los substrings rodeados por '"' están juntos
+        """
+        query_split = query.split()
+        query_list: list[str] = []
+
+        i = 0
+        while i < len(query_split):
+            if query_split[i].startswith('"'):
+                s = query_split[i]
+                while not query_split[i].endswith('"'):
+                    i += 1
+                    s += " " + query_split[i]
+
+                # borra los '"' del principio y final
+                s = s[1:-1]
+                query_list.append(s)
+            else:
+                query_list.append(query_split[i])
+
+            i += 1
+
+        return query_list
 
     def solve_query(self, query:str, prev:Dict={}):
         """
@@ -455,14 +479,24 @@ class SAR_Indexer:
 
         """
 
-        print(query)
-        
         if query is None or len(query) == 0:
             return []
 
-        ########################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES ##
-        ########################################
+        parsed = self.parse_query(query)
+        head, tail = parsed[0], parsed[1:]
+
+        # acumulador para los resultados de la intersección entre posting lists
+        posting_list_acc = None
+
+        if head in self.index:
+            posting_list_acc = self.index[head]
+        else:
+            return []
+
+        for q in tail:
+            posting_list_acc &= self.index[q]
+        
+        return posting_list_acc.get()
 
 
 
