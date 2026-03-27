@@ -483,18 +483,26 @@ class SAR_Indexer:
             return []
 
         parsed = self.parse_query(query)
-        head, tail = parsed[0], parsed[1:]
+        queries = iter(parsed)
+        first = next(queries)
 
         # acumulador para los resultados de la intersección entre posting lists
         posting_list_acc = None
 
-        if head in self.index:
-            posting_list_acc = self.index[head]
+        if first in self.index:
+            posting_list_acc = self.index[first]
         else:
             return []
 
-        for q in tail:
-            posting_list_acc &= self.index[q]
+        for q in queries:
+            if q not in self.index:
+                return []
+
+            if q == "NOT":
+                q = next(queries)
+                posting_list_acc -= self.index[q]
+            else:
+                posting_list_acc &= self.index[q]
         
         return posting_list_acc.get()
 
