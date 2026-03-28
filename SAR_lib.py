@@ -492,7 +492,16 @@ class SAR_Indexer:
         # acumulador para los resultados de la intersección entre posting lists
         posting_list_acc = None
 
-        if first in self.index:
+        if first == "NOT":
+            # si empieza con NOT, saca todos los que NO coinciden con el siguiente
+
+            # crea una PostingList con todos los articulos
+            posting_list_acc = PostingList(list(self.articles.keys()))
+            # excluye los que coinciden con la query
+            excluded = next(queries)
+            if excluded in self.index:
+                posting_list_acc -= self.index[excluded]
+        elif first in self.index:
             posting_list_acc = self.index[first]
         else:
             return []
@@ -678,7 +687,7 @@ class SAR_Indexer:
 
 class PostingList:
 
-    def __init__(self, postings = None):
+    def __init__(self, postings: list[int] | None = None):
         self.postings = postings if postings is not None else []
         self.sorted = False
 
@@ -730,6 +739,12 @@ class PostingList:
             output.insert(a[k])
 
         return output
+
+    def __or__(self, other: "PostingList"):
+        """
+        Sobrecarga el operador "+"
+        """
+        return PostingList(list(set(self.postings + other.postings)))
 
     def insert(self, posting: int):
         """
