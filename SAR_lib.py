@@ -377,8 +377,8 @@ class SAR_Indexer:
             article = self.parse_article(line)
             content = article[self.DEFAULT_FIELD]
 
-            # extrae los términos de la cadena ya limpiada, quitando repetidos
-            terms = set(self.tokenize(content))
+            # extrae los términos de la cadena ya limpiada
+            terms = self.tokenize(content)
 
             for term in terms:
                 if term not in self.index:
@@ -492,7 +492,13 @@ class SAR_Indexer:
             # si empieza con NOT, saca todos los que NO coinciden con el siguiente
 
             # crea una PostingList con todos los articulos
-            posting_list_acc = PostingList(list(self.articles.keys()))
+            # WARN: No funcionará para búsqueda posicional si está en False.
+            # Cúando debería ser posicional?
+            # self.positional NO está inicializado.
+            posting_list_acc = PostingList(positional=False)
+            for posting in self.index.values():
+                posting_list_acc |= posting
+
             # excluye los que coinciden con la query
             excluded = next(queries)
             if excluded in self.index:
@@ -502,7 +508,6 @@ class SAR_Indexer:
         else:
             return []
 
-        # se asume que "NOT" no aparecerá al principio de la consulta
         for q in queries:
             if q == "NOT":
                 q = next(queries) # fallará si "NOT" no va seguido de nada
@@ -683,11 +688,14 @@ class SAR_Indexer:
 
 class PostingList:
 
-    def __init__(self, postings: list[int] | None = None):
+    def __init__(self, postings: list[tuple[int, int]] | None = None, positional: bool = False):
+        self.positional = positional
+
         if postings is None:
             postings = []
-
-        self.postings = set(postings)
+        self.postings: Dict[int, list[int]] = {}
+        for (posting, position) in postings:
+            self._append_posting(posting, position)
 
     def __and__(self, other: "PostingList"):
         """
@@ -704,7 +712,9 @@ class PostingList:
             elif a[i] < b[j]:
                 i += 1
             else: # si son iguales
+                # inserta los dos para juntar todos los documentos de ambas instancias
                 output.insert(a[i])
+                output.insert(b[j])
                 i += 1
                 j += 1
 
@@ -742,16 +752,40 @@ class PostingList:
         """
         Sobrecarga el operador "+"
         """
-        return PostingList(list(self.postings) + list(other.postings))
 
-    def insert(self, posting: int):
+        new_postings = self.postings.copy()
+        for (posting, position) in other.postings:
+            self._append_posting(posting, position, new_postings)
+
+        result = PostingList()
+        result.postings = new_postings
+        return result
+
+    def insert(self, posting: int, position: int | None = None):
         """
         Inserta el posting de forma ordenada
-
-        Se asume que no se va a llamar a la misma instancia de `PostingList`
-        con el mismo valor de `posting`
         """
-        self.postings.add(posting)
+        self._append_posting(posting, position)
 
+    def _append_posting(
+        self,
+        posting: int,
+        position: int | None,
+        posting_list: Dict[int, list[int]] | None = None,
+        positional: bool | None = None
+    ):
+        if posting_list is None:
+            posting_list = self.postings
+        if positional is None:
+            positional = self.positional
+
+        if posting not in posting_list:
+            posting_list[posting] = []
+
+        if self.positional and position is not None:
+           posting_list[posting].append(position)
+
+
+    # TODO: Sólo devuelve las claves de la lista
     def get(self):
         return sorted(self.postings)
