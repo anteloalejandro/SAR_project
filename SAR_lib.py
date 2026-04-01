@@ -386,10 +386,6 @@ class SAR_Indexer:
 
                 self.index[term].insert(artid)
 
-            # BUG: se añaden todos los artid múltiples veces, pero sólo debería estar "49" una sóla vez
-            print(self.index["dross"].get() if "dross" in self.index else None)
-
-
     def tokenize(self, text:str):
         """
         NECESARIO PARA TODAS LAS VERSIONES
@@ -688,8 +684,10 @@ class SAR_Indexer:
 class PostingList:
 
     def __init__(self, postings: list[int] | None = None):
-        self.postings = postings if postings is not None else []
-        self.sorted = False
+        if postings is None:
+            postings = []
+
+        self.postings = set(postings)
 
     def __and__(self, other: "PostingList"):
         """
@@ -744,7 +742,7 @@ class PostingList:
         """
         Sobrecarga el operador "+"
         """
-        return PostingList(list(set(self.postings + other.postings)))
+        return PostingList(list(self.postings) + list(other.postings))
 
     def insert(self, posting: int):
         """
@@ -753,14 +751,7 @@ class PostingList:
         Se asume que no se va a llamar a la misma instancia de `PostingList`
         con el mismo valor de `posting`
         """
-        self.sorted = False
-        self.postings.append(posting)
+        self.postings.add(posting)
 
     def get(self):
-        self.sort()
-        return self.postings
-
-    def sort(self):
-        if not self.sorted:
-            self.postings.sort()
-            self.sorted = True
+        return sorted(self.postings)
