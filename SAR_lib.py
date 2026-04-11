@@ -28,7 +28,6 @@ def create_semantic_model(modelname):
     elif modelname == "Spacy": SpacyStaticModel(remove_stopwords=False, remove_noalpha=False)
     return SpacyStaticModel()
 
-
 class SAR_Indexer:
     """
     Prototipo de la clase para realizar la indexacion y la recuperacion de artículos de Wikipedia
@@ -380,11 +379,11 @@ class SAR_Indexer:
             # extrae los términos de la cadena ya limpiada
             terms = self.tokenize(content)
 
-            for term in terms:
+            for position, term in enumerate(terms):
                 if term not in self.index:
                     self.index[term] = PostingList()
 
-                self.index[term].insert(artid)
+                self.index[term].insert(artid, position)
 
     def tokenize(self, text:str):
         """
@@ -492,14 +491,14 @@ class SAR_Indexer:
             # si empieza con NOT, saca todos los que NO coinciden con el siguiente
 
             # crea una PostingList con todos los articulos
-            # WARN: No funcionará para búsqueda posicional si está en False.
-            # Cúando debería ser posicional?
-            # self.positional NO está inicializado.
-            posting_list_acc = PostingList(positional=False)
+            # WARN: lo hace posicional sin importar si el índice es posicional o no
+            # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
+            posting_list_acc = PostingList(positional=True)
             for posting in self.index.values():
                 posting_list_acc |= posting
 
             # excluye los que coinciden con la query
+            # BUG: No tiene en cuenta los posicionales
             excluded = next(queries)
             if excluded in self.index:
                 posting_list_acc -= self.index[excluded]
@@ -713,8 +712,8 @@ class PostingList:
                 i += 1
             else: # si son iguales
                 # inserta los dos para juntar todos los documentos de ambas instancias
-                output.insert(a[i])
-                output.insert(b[j])
+                output.insert_all(a[i][0], a[i][1])
+                output.insert_all(b[j][0], b[j][1])
                 i += 1
                 j += 1
 
@@ -730,12 +729,11 @@ class PostingList:
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
-            if a[i] > b[j]:
+            if a[i][0] > b[j][0]:
                 # está en B y no en A
                 j += 1
-            elif a[i] < b[j]:
-                # está en A y no en B
-                output.insert(a[i])
+            elif a[i][0] < b[j][0]:
+                output.insert_all(a[i][0], a[i][1])
                 i += 1
             else: # son iguales
                 # está en A y en B
@@ -744,7 +742,7 @@ class PostingList:
 
         # si quedan elementos en A pero no en B, se añaden todos
         for k in range(i, len(a)):
-            output.insert(a[k])
+            output.insert_all(a[k][0], a[k][1])
 
         return output
 
@@ -754,10 +752,11 @@ class PostingList:
         """
 
         new_postings = self.postings.copy()
-        for (posting, position) in other.postings:
-            self._append_posting(posting, position, new_postings)
+        for (posting, positions) in other.postings.items():
+            for position in positions:
+                self._append_posting(posting, position, new_postings)
 
-        result = PostingList()
+        result = PostingList(positional=self.positional)
         result.postings = new_postings
         return result
 
@@ -766,6 +765,10 @@ class PostingList:
         Inserta el posting de forma ordenada
         """
         self._append_posting(posting, position)
+
+    def insert_all(self, posting: int, positions: list[int]):
+        for p in positions:
+            self._append_posting(posting, p)
 
     def _append_posting(
         self,
@@ -782,10 +785,9 @@ class PostingList:
         if posting not in posting_list:
             posting_list[posting] = []
 
-        if self.positional and position is not None:
+        if positional and position is not None:
            posting_list[posting].append(position)
 
 
-    # TODO: Sólo devuelve las claves de la lista
     def get(self):
-        return sorted(self.postings)
+        return sorted(self.postings.items(), key=lambda i: i[0])
