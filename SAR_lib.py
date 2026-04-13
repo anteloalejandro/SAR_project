@@ -484,9 +484,6 @@ class SAR_Indexer:
         queries = iter(parsed)
         first = next(queries)
 
-        # acumulador para los resultados de la intersección entre posting lists
-        posting_list_acc = None
-
         if first == "NOT":
             # si empieza con NOT, saca todos los que NO coinciden con el siguiente
 
@@ -706,9 +703,9 @@ class PostingList:
         i = j = 0 # índices de `a` y `b`, respectivamente
 
         while i < len(a) and j < len(b):
-            if a[i] > b[j]:
+            if a[i][0] > b[j][0]:
                 j += 1
-            elif a[i] < b[j]:
+            elif a[i][0] < b[j][0]:
                 i += 1
             else: # si son iguales
                 # inserta los dos para juntar todos los documentos de ambas instancias
@@ -767,6 +764,8 @@ class PostingList:
         self._append_posting(posting, position)
 
     def insert_all(self, posting: int, positions: list[int]):
+        if posting not in self.postings:
+            self.postings[posting] = []
         for p in positions:
             self._append_posting(posting, p)
 
@@ -786,7 +785,7 @@ class PostingList:
             posting_list[posting] = []
 
         if positional and position is not None:
-           posting_list[posting].append(position)
+            posting_list[posting].append(position)
 
 
     def get(self):
