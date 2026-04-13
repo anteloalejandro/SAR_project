@@ -517,7 +517,7 @@ class SAR_Indexer:
         NECESARIO PARA TODAS LAS VERSIONES
 
         """
-        if len(term.split()) > 0:
+        if len(term.split()) > 1:
             return self.get_positionals(term)
         else:
             return self.index[term] if term in self.index else PostingList()
@@ -536,10 +536,54 @@ class SAR_Indexer:
 
         """
 
-        # TODO: Acabar esto
-        print("ERROR: Se ha detectado un posicional, pero la búsqueda posicional aún no está implementada")
-        raise NotImplementedError
+        terms_iter = iter(terms.split())
+        head = next(terms_iter)
+        tail = terms_iter
 
+        # guarda los documentos que contienen la sucesión de términos indicada
+        positionals = self.get_posting(head)
+
+        for term in tail:
+            # busca, para cada uno de los documentos que contienen `term`,
+            # en cuáles se suceden las posiciones anteriores y guarda las nuevas posicioens
+
+            term_postings = self.get_posting(term)
+
+            a = positionals.get()
+            b = term_postings.get()
+            i = j = 0 # índices de `a` y `b`
+
+            positionals = PostingList()
+
+            while i < len(a) and j < len(b):
+            # busca los documentos (artículos) que coinciden
+                if a[i][0] < b[j][0]:
+                    i += 1
+                elif a[i][0] > b[j][0]:
+                    j += 1
+                else:
+                    artid = a[i][0]
+                    positions_a = a[i][1]
+                    positions_b = b[j][1]
+                    i += 1
+                    j += 1
+
+                    # NOTE: Se asume que ambas listas están ordenadas,
+                    # porque las posiciones se insertan de forma ordenada
+                    m = n = 0
+                    while m < len(positions_a) and n < len(positions_b):
+                        # busca las posiciones que se suceden
+                        if positions_a[m]+1 < positions_b[n]:
+                            m += 1
+                        elif positions_a[m]+1 > positions_b[n]:
+                            n += 1
+                        else:
+                            position = positions_b[n] # la posición del sucesivo
+                            positionals.insert(artid, position)
+                            m += 1
+                            n += 1
+
+        return positionals
 
 
     def reverse_posting(self, p: list):
@@ -762,8 +806,16 @@ class PostingList:
 
 
     def get(self):
+        """
+        Devuelve, de forma ordenada, una lista que representa una posting list,
+        donde cada ítem es una tupla con el posting y las posiciones en las que se encuentra.
+        """
         return sorted(self.postings.items(), key=lambda i: i[0])
 
     def get_list(self):
+        """
+        Devuelve, de forma ordenada, una lista que representa una posting list,
+        cuyos ítems son los postings.
+        """
         return [p[0] for p in self.get()]
 

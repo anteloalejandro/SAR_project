@@ -2,4 +2,4 @@
 
 cd $VIRTUAL_ENV/..
 
-python SAR_Indexer.py datasets/$1 output/$1
+python SAR_Indexer.py -P datasets/$1 output/$1
