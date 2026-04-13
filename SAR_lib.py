@@ -490,7 +490,7 @@ class SAR_Indexer:
             # crea una PostingList con todos los articulos
             # WARN: lo hace posicional sin importar si el índice es posicional o no
             # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
-            posting_list_acc = PostingList(positional=True)
+            posting_list_acc = PostingList()
             for posting in self.index.values():
                 posting_list_acc |= posting
 
@@ -533,10 +533,7 @@ class SAR_Indexer:
         NECESARIO PARA TODAS LAS VERSIONES
 
         """
-        ########################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES ##
-        ########################################
-        pass
+        return self.index[term] if term in self.index else PostingList()
 
 
 
@@ -552,14 +549,12 @@ class SAR_Indexer:
 
         """
 
-        #################################
-        ## COMPLETAR PARA POSICIONALES ##
-        #################################
+        # TODO: Acabar esto
         pass
 
 
 
-    def reverse_posting(self, p:list):
+    def reverse_posting(self, p: list):
         """
         NECESARIO PARA TODAS LAS VERSIONES
 
@@ -574,10 +569,16 @@ class SAR_Indexer:
 
         """
         
-        pass
-        ########################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES ##
-        ########################################
+        # crea una PostingList con todos los articulos
+        # WARN: lo hace posicional sin importar si el índice es posicional o no
+        # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
+        all_postings = PostingList()
+        for posting in self.index.values():
+            all_postings |= posting
+
+        # excluye los que coinciden con la query
+        # BUG: No tiene en cuenta los posicionales
+        return all_postings - PostingList(p)
 
 
 
@@ -613,11 +614,7 @@ class SAR_Indexer:
 
         """
 
-        
-        pass
-        ########################################################
-        ## COMPLETAR PARA TODAS LAS VERSIONES SI ES NECESARIO ##
-        ########################################################
+        return PostingList(p1) - PostingList(p2)        
 
 
 
@@ -684,9 +681,7 @@ class SAR_Indexer:
 
 class PostingList:
 
-    def __init__(self, postings: list[tuple[int, int]] | None = None, positional: bool = False):
-        self.positional = positional
-
+    def __init__(self, postings: list[tuple[int, int]] | None = None):
         if postings is None:
             postings = []
         self.postings: Dict[int, list[int]] = {}
@@ -709,8 +704,8 @@ class PostingList:
                 i += 1
             else: # si son iguales
                 # inserta los dos para juntar todos los documentos de ambas instancias
-                output.insert_all(a[i][0], a[i][1])
-                output.insert_all(b[j][0], b[j][1])
+                output._append_posting(a[i][0])
+                output._append_posting(b[j][0])
                 i += 1
                 j += 1
 
@@ -730,7 +725,7 @@ class PostingList:
                 # está en B y no en A
                 j += 1
             elif a[i][0] < b[j][0]:
-                output.insert_all(a[i][0], a[i][1])
+                output._append_posting(a[i][0])
                 i += 1
             else: # son iguales
                 # está en A y en B
@@ -739,7 +734,7 @@ class PostingList:
 
         # si quedan elementos en A pero no en B, se añaden todos
         for k in range(i, len(a)):
-            output.insert_all(a[k][0], a[k][1])
+            output._append_posting(a[k][0])
 
         return output
 
@@ -749,15 +744,10 @@ class PostingList:
         """
 
         new_postings = self.postings.copy()
-        for (posting, positions) in other.postings.items():
-            # TODO: limpiar esto, se repite
-            if posting not in new_postings:
-                new_postings[posting] = []
+        for (posting, _) in other.postings.items():
+            self._append_posting(posting, None, new_postings)
 
-            for position in positions:
-                self._append_posting(posting, position, new_postings)
-
-        result = PostingList(positional=self.positional)
+        result = PostingList()
         result.postings = new_postings
         return result
 
@@ -767,30 +757,19 @@ class PostingList:
         """
         self._append_posting(posting, position)
 
-    def insert_all(self, posting: int, positions: list[int]):
-        # TODO: limpiar esto, se repite
-        if posting not in self.postings:
-            self.postings[posting] = []
-
-        for p in positions:
-            self._append_posting(posting, p)
-
     def _append_posting(
         self,
         posting: int,
-        position: int | None,
+        position: int | None = None,
         posting_list: Dict[int, list[int]] | None = None,
-        positional: bool | None = None
     ):
         if posting_list is None:
             posting_list = self.postings
-        if positional is None:
-            positional = self.positional
 
         if posting not in posting_list:
             posting_list[posting] = []
 
-        if positional and position is not None:
+        if position is not None:
             posting_list[posting].append(position)
 
 
