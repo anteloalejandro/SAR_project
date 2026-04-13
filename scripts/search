@@ -1,0 +1,4 @@
+#!/bin/bash
+
+queries=$(echo "${@:2}")
+python SAR_Searcher.py output/$1 -Q "$queries"
