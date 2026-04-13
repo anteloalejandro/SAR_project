@@ -1,0 +1,21 @@
+#!/bin/bash
+
+cd $VIRTUAL_ENV/..
+
+if [[ -z "$1" ]]; then
+  echo "missing test parameter can be either 'all' or reference a file in output or references"
+elif [[ "$1" == "all" ]]; then
+  for i in `ls output`; do
+    echo "######## TESTING $i ########"
+    if [[ "$2" == "index" ]]; then
+      index $1
+    fi
+    python SAR_Searcher.py output/$i -T references/"$i"_positional.ref
+    echo "####### END TESTS $i #######\n\n"
+  done
+else
+    if [[ "$2" == "index" ]]; then
+      index $1
+    fi
+    python SAR_Searcher.py output/$1 -T references/"$1"_positional.ref
+fi

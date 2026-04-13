@@ -478,7 +478,7 @@ class SAR_Indexer:
         """
 
         if query is None or len(query) == 0:
-            return []
+            return [], None # el `, None` lo piden los tests
 
         parsed = self.parse_query(query)
         queries = iter(parsed)
@@ -498,7 +498,7 @@ class SAR_Indexer:
             else:
                 posting_list_acc &= self.get_posting(q)
         
-        return posting_list_acc.get()
+        return posting_list_acc.get_list(), None # el `, None` lo piden los tests
 
 
 
