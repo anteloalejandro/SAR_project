@@ -485,34 +485,18 @@ class SAR_Indexer:
         first = next(queries)
 
         if first == "NOT":
-            # si empieza con NOT, saca todos los que NO coinciden con el siguiente
-
-            # crea una PostingList con todos los articulos
-            # WARN: lo hace posicional sin importar si el índice es posicional o no
-            # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
-            posting_list_acc = PostingList()
-            for posting in self.index.values():
-                posting_list_acc |= posting
-
-            # excluye los que coinciden con la query
-            # BUG: No tiene en cuenta los posicionales
             excluded = next(queries)
-            if excluded in self.index:
-                posting_list_acc -= self.index[excluded]
-        elif first in self.index:
-            posting_list_acc = self.index[first]
+            excluded_posting = self.get_posting(excluded).get_list()
+            posting_list_acc = self.reverse_posting(excluded_posting)
         else:
-            return []
+            posting_list_acc = self.get_posting(first)
 
         for q in queries:
             if q == "NOT":
                 q = next(queries) # fallará si "NOT" no va seguido de nada
-                if q in self.index:
-                    posting_list_acc -= self.index[q]
-            elif q not in self.index:
-                return []
+                posting_list_acc -= self.get_posting(q)
             else:
-                posting_list_acc &= self.index[q]
+                posting_list_acc &= self.get_posting(q)
         
         return posting_list_acc.get()
 
@@ -533,7 +517,10 @@ class SAR_Indexer:
         NECESARIO PARA TODAS LAS VERSIONES
 
         """
-        return self.index[term] if term in self.index else PostingList()
+        if len(term.split()) > 0:
+            return self.get_positionals(term)
+        else:
+            return self.index[term] if term in self.index else PostingList()
 
 
 
@@ -550,7 +537,8 @@ class SAR_Indexer:
         """
 
         # TODO: Acabar esto
-        pass
+        print("ERROR: Se ha detectado un posicional, pero la búsqueda posicional aún no está implementada")
+        raise NotImplementedError
 
 
 
@@ -572,12 +560,12 @@ class SAR_Indexer:
         # crea una PostingList con todos los articulos
         # WARN: lo hace posicional sin importar si el índice es posicional o no
         # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
+        # WARN: no tiene en cuenta si es posicional, podría ser un problema
         all_postings = PostingList()
         for posting in self.index.values():
             all_postings |= posting
 
         # excluye los que coinciden con la query
-        # BUG: No tiene en cuenta los posicionales
         return all_postings - PostingList(p)
 
 
@@ -681,12 +669,12 @@ class SAR_Indexer:
 
 class PostingList:
 
-    def __init__(self, postings: list[tuple[int, int]] | None = None):
+    def __init__(self, postings: list[int] | None = None):
         if postings is None:
             postings = []
         self.postings: Dict[int, list[int]] = {}
-        for (posting, position) in postings:
-            self._append_posting(posting, position)
+        for posting in postings:
+            self._append_posting(posting)
 
     def __and__(self, other: "PostingList"):
         """
@@ -740,7 +728,7 @@ class PostingList:
 
     def __or__(self, other: "PostingList"):
         """
-        Sobrecarga el operador "+"
+        Sobrecarga el operador "|"
         """
 
         new_postings = self.postings.copy()
@@ -775,3 +763,7 @@ class PostingList:
 
     def get(self):
         return sorted(self.postings.items(), key=lambda i: i[0])
+
+    def get_list(self):
+        return [p[0] for p in self.get()]
+
