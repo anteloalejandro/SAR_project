@@ -1,4 +1,11 @@
 #!/bin/bash
 
-queries=$(echo "${@:2}")
+for query in "${@:2}"; do
+  if [[ $(echo "$query" | wc -w) -gt 1 ]]; then
+    query=\"$query\"
+  fi
+
+  queries="$queries $query"
+done
+
 python SAR_Searcher.py output/$1 -Q "$queries"
