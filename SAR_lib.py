@@ -750,6 +750,10 @@ class PostingList:
 
         new_postings = self.postings.copy()
         for (posting, positions) in other.postings.items():
+            # TODO: limpiar esto, se repite
+            if posting not in new_postings:
+                new_postings[posting] = []
+
             for position in positions:
                 self._append_posting(posting, position, new_postings)
 
@@ -764,8 +768,10 @@ class PostingList:
         self._append_posting(posting, position)
 
     def insert_all(self, posting: int, positions: list[int]):
+        # TODO: limpiar esto, se repite
         if posting not in self.postings:
             self.postings[posting] = []
+
         for p in positions:
             self._append_posting(posting, p)
 
