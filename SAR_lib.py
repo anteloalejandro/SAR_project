@@ -436,7 +436,7 @@ class SAR_Indexer:
     ###                             ###
     ###################################
 
-    def parse_query(self, query):
+    def parse_query(self, query: str):
         """
         Convierte la consulta en una lista de strings en la que los substrings rodeados por '"' están juntos
         """
@@ -517,6 +517,7 @@ class SAR_Indexer:
         NECESARIO PARA TODAS LAS VERSIONES
 
         """
+        term = term.lower()
         if len(term.split()) > 1:
             return self.get_positionals(term)
         else:
