@@ -361,19 +361,24 @@ class SAR_Indexer:
         docid = len(self.docs)
         self.docs[docid] = filename
 
-        artid_base = len(self.articles)
+        artid = len(self.articles)
 
         # itera por los artículos de un fichero
         for i, line in enumerate(open(filename)):
+            article = self.parse_article(line)
+            if self.already_in_index(article):
+                continue
+
+            self.urls.add(article["url"])
+
             # calcula el Id global del artículo
-            artid = (artid_base+i)
+            artid += 1
             # guarda el índice del documento y la posición relativa en él
             self.articles[artid] = {
                 "document": docid,
                 "relative_position": i,
             }
 
-            article = self.parse_article(line)
             content = article[self.DEFAULT_FIELD]
 
             # extrae los términos de la cadena ya limpiada
