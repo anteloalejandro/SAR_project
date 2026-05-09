@@ -93,6 +93,55 @@ Una vez tratada la consulta, se debe diferenciar entre las 3 operaciones que pue
 
 + *Diferencia `NOT AND`.* Se ha de calcular cuando los términos se separan por un `NOT`. De forma similar a la intersección, se guarda el resultado de la operación `|`.
 
+La recuperación de documentos relevantes, por tanto, se divide en dos pasos.
+
+Primero, se coge el primer término, `first`, y se crea una `PostingList` a través de él. Si `first` es `NOT`, se sacará la negación del siguiente término.
+
+```python
+if first == "NOT":
+    excluded = next(queries)
+    excluded_posting = self.get_posting(excluded).get_list()
+    posting_list_acc = self.reverse_posting(excluded_posting)
+else:
+    posting_list_acc = self.get_posting(first)
+```
+
+La `PostingList` se irá actualizando aplicando la intersección o diferencia con cada uno de los términos siguientes conforme corresponda.
+
+```python
+for q in queries:
+    if q == "NOT":
+        q = next(queries)
+        posting_list_acc -= self.get_posting(q)
+    else:
+        posting_list_acc &= self.get_posting(q)
+
+return posting_list_acc.get_list(), None
+```
+
+=== Búsqueda posicional
+
+Cuando no se hace la búsqueda posicional, obtener la `PostingList` correspondiente a un término es trivial, sólo hay que indexar con el término en el índice inverso que se ha creado durante la fase de indexación.
+
+```python
+posting_list = self.index[term]
+```
+
+No se puede hacer lo mismo con las búsquedas posicionales, que consisten en comprobar las `PostingList` en las que hay una secuencia de términos y, por tanto, no están indexadas en ningún sitio. En su lugar, se tienen que calcular en tiempo de ejecución.
+
+Para simplificar la búsqueda de términos se juntan ambas posibilidades (búsqueda de un sólo término o búsqueda de posicional) en una sola función ```python get_posting()```, que comprueba de antemano cuántos términos hay en la consulta.
+
+```python
+if len(term.split()) > 1:
+    return self.get_positionals(term)
+else:
+    return self.index[term] if term in self.index else PostingList()
+``` 
+
+Aquí, el método ```python get_positionals()``` coge un _string_ con términos separados por espacios e itera por ellos, siguiendo estos pasos:
+- Por cada término en la búsqueda, coge todos los `artid` en su `PostingList` coincide con los de la `PostingList` del término anterior.
+  - Por cada artículo que coincide coge aquellas posiciones que son exactamente 1 mayores que alguno de las posiciones la iteración anterior.
+
 = Ampliaciones
 
 == Similitud semántica
