@@ -220,6 +220,18 @@ class SAR_Indexer:
         print("done!")
 
 
+    def unique_in_order(self, input, included_in = None):
+        result = []
+        memo = set()
+
+        for item in input:
+            if item in memo or (included_in is not None and item not in included_in): continue
+
+            memo.add(item)
+            result.append(item)
+
+        return result
+
         
     def solve_semantic_query(self, query:str):
         """
@@ -246,7 +258,6 @@ class SAR_Indexer:
             # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
             indexed_distances = self.model.query(query, top_k)
             greatest_distance,_ = indexed_distances[-1]
-            # convierte los índices en un set de artículos
             if (
                 # si no se ha establecido un threshold, se dan los resultados como buenos...
                 self.semantic_threshold is None
@@ -260,8 +271,7 @@ class SAR_Indexer:
             top_k = min(top_k*2, K)
 
         # saca los artículos a partir de los índices
-        return list(set([self.chunck_index[i] for _, i in indexed_distances]))
-
+        return self.unique_in_order([self.chunck_index[i] for _, i in indexed_distances])
 
     def semantic_reranking(self, query:str, articles: List[int]):
         """
@@ -287,13 +297,13 @@ class SAR_Indexer:
             # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
             indexed_distances = self.model.query(query, top_k)
             # convierte los índices en un set de artículos
-            retrieved_articles = set([self.chunck_index[i] for _, i in indexed_distances])
-            if top_k == K or not retrieved_articles.difference(articles):
+            retrieved_articles = self.unique_in_order([self.chunck_index[i] for _, i in indexed_distances])
+            if top_k == K or not set(retrieved_articles).difference(articles):
                 break
 
             top_k = min(top_k*2, K)
 
-        return list(retrieved_articles)
+        return self.unique_in_order(retrieved_articles, articles)
 
 
     ###############################
@@ -526,11 +536,11 @@ class SAR_Indexer:
         """
 
         if query is None or len(query) == 0:
-            return [], None # el `, None` lo piden los tests
+            return []
 
         # Hacer búsqueda semántica en lugar de la búsqueda por términos
-        if self.semantic:
-            return self.solve_semantic_query(query), None # el `, None` lo piden los tests
+        # if self.semantic:
+        #     return self.solve_semantic_query(query)
 
         parsed = self.parse_query(query)
         queries = iter(parsed)
@@ -554,7 +564,8 @@ class SAR_Indexer:
         if self.semantic_ranking:
             articles = self.semantic_reranking(query, articles)
 
-        return articles, None # el `, None` lo piden los tests
+        print(articles)
+        return articles
 
 
 
@@ -720,9 +731,9 @@ class SAR_Indexer:
         for query in ql:
             if len(query) > 0 and query[0] != '#':
                 r, _ = self.solve_query(query)
-                results.append(len(r))
+                results.append(len(r))  # pyright: ignore[reportArgumentType]
                 if verbose:
-                    print(f'{query}\t{len(r)}')
+                    print(f'{query}\t{len(r)}')  # pyright: ignore[reportArgumentType]
             else:
                 results.append(0)
                 if verbose:
@@ -737,7 +748,7 @@ class SAR_Indexer:
                 query, ref = line.split('\t')
                 reference = int(ref)
                 result, _ = self.solve_query(query)
-                result = len(result)
+                result = len(result)  # pyright: ignore[reportArgumentType]
                 if reference == result:
                     print(f'{query}\t{result}')
                 else:
