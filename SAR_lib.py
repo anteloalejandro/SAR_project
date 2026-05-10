@@ -396,7 +396,7 @@ class SAR_Indexer:
                 if term not in self.index:
                     self.index[term] = PostingList()
 
-                self.index[term].insert(artid, position)
+                self.index[term].insert(artid, position if self.positional else None)
 
     def tokenize(self, text:str):
         """
