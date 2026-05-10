@@ -73,7 +73,7 @@ class SAR_Indexer:
         self.chunck_index = []
         self.artid_to_emb = {} # WARN: Sin usar
         self.kdtree = None
-        self.semantic_threshold = None # WARN: Sin usar
+        self.semantic_threshold = None
         self.semantic_ranking = None # ¿¿ ranking de consultas binarias ?? # WARN: Sin usar
         self.model: EmbeddingModel | None = None
         self.MAX_EMBEDDINGS = 200 # número máximo de embedding que se extraen del kdtree en una consulta # WARN: Sin usar
@@ -182,7 +182,6 @@ class SAR_Indexer:
             print("done!", file=sys.stderr)
 
             
-
     def update_chuncks(self, txt:str, artid:int):
         """
         
@@ -200,8 +199,6 @@ class SAR_Indexer:
         self.chuncks.append(sentences)
         self.chunck_index.append(artid)
 
-        pass
-        
 
     def create_kdtree(self):
         """
@@ -238,14 +235,30 @@ class SAR_Indexer:
         """
 
         self.load_semantic_model()
-        
-        # COMPLETAR
 
-        # 1
-        # 2
-        # 3
-        # 4
-        # 5
+        assert self.embeddings is not None
+
+        articles = list(self.articles.keys()) # obtén los artid
+        k = self.MAX_EMBEDDINGS
+        while True:
+            # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
+            indexed_distances = self.model.query(query, k)
+            greatest_distance,_ = indexed_distances[-1]
+            # convierte los índices en un set de artículos
+            if (
+                # si no se ha establecido un threshold, se dan los resultados como buenos...
+                self.semantic_threshold is None
+                # si se ha establecido, la mayor de las distancias ha de ser menor o igual que él...
+                or greatest_distance > self.semantic_threshold
+                # pero si se han recuperado todos los embeddings no buscamos más
+                or len(indexed_distances) == len(self.embeddings)
+            ): break
+
+            # aumenta el máximo de documentos a recuperar en la query
+            k *= 2
+
+        # saca los artículos a partir de los índices
+        return list(set([articles[i] for _, i in indexed_distances]))
 
 
     def semantic_reranking(self, query:str, articles: List[int]):
@@ -262,12 +275,20 @@ class SAR_Indexer:
         """
         
         self.load_semantic_model()
-        # COMPLETAR
-        # 1
-        # 2
-        # 3
-        # 4
-    
+
+        k = self.MAX_EMBEDDINGS
+        while True:
+            # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
+            indexed_distances = self.model.query(query, k)
+            # convierte los índices en un set de artículos
+            retrieved_articles = set([articles[i] for _, i in indexed_distances])
+            if not retrieved_articles.difference(articles):
+                break
+
+            k *= 2
+
+        return list(retrieved_articles)
+
 
     ###############################
     ###                         ###
