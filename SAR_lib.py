@@ -235,14 +235,16 @@ class SAR_Indexer:
         """
 
         self.load_semantic_model()
+        self.model.set_kdtree(self.kdtree)
+        self.model.set_embeddings(self.embeddings)
 
         assert self.embeddings is not None
+        K = len(self.embeddings)
 
-        articles = list(self.articles.keys()) # obtén los artid
-        k = self.MAX_EMBEDDINGS
+        top_k = min(self.MAX_EMBEDDINGS, K)
         while True:
             # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
-            indexed_distances = self.model.query(query, k)
+            indexed_distances = self.model.query(query, top_k)
             greatest_distance,_ = indexed_distances[-1]
             # convierte los índices en un set de artículos
             if (
@@ -251,14 +253,14 @@ class SAR_Indexer:
                 # si se ha establecido, la mayor de las distancias ha de ser menor o igual que él...
                 or greatest_distance > self.semantic_threshold
                 # pero si se han recuperado todos los embeddings no buscamos más
-                or len(indexed_distances) == len(self.embeddings)
+                or K == top_k
             ): break
 
             # aumenta el máximo de documentos a recuperar en la query
-            k *= 2
+            top_k = min(top_k*2, K)
 
         # saca los artículos a partir de los índices
-        return list(set([articles[i] for _, i in indexed_distances]))
+        return list(set([self.chunck_index[i] for _, i in indexed_distances]))
 
 
     def semantic_reranking(self, query:str, articles: List[int]):
@@ -275,17 +277,21 @@ class SAR_Indexer:
         """
         
         self.load_semantic_model()
+        self.model.set_kdtree(self.kdtree)
+        self.model.set_embeddings(self.embeddings)
 
-        k = self.MAX_EMBEDDINGS
+        assert self.embeddings is not None
+        K = len(self.chuncks)
+        top_k = min(self.MAX_EMBEDDINGS, K)
         while True:
             # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
-            indexed_distances = self.model.query(query, k)
+            indexed_distances = self.model.query(query, top_k)
             # convierte los índices en un set de artículos
-            retrieved_articles = set([articles[i] for _, i in indexed_distances])
-            if not retrieved_articles.difference(articles):
+            retrieved_articles = set([self.chunck_index[i] for _, i in indexed_distances])
+            if top_k == K or not retrieved_articles.difference(articles):
                 break
 
-            k *= 2
+            top_k = min(top_k*2, K)
 
         return list(retrieved_articles)
 
