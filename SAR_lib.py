@@ -67,7 +67,7 @@ class SAR_Indexer:
         self.show_all = False # valor por defecto, se cambia con self.set_showall()
 
         # PARA LA AMPLIACION
-        self.semantic = None # WARN: Sin usar
+        self.semantic = None
         self.chuncks = []
         self.embeddings = []
         self.chunck_index = []
@@ -319,6 +319,9 @@ class SAR_Indexer:
             print(f"ERROR:{root} is not a file nor directory!", file=sys.stderr)
             sys.exit(-1)
 
+        # INFO: Para la búsqueda semántica
+        self.create_kdtree()
+
         #####################################################
         ## COMPLETAR SI ES NECESARIO FUNCIONALIDADES EXTRA ##
         #####################################################
@@ -397,6 +400,11 @@ class SAR_Indexer:
                     self.index[term] = PostingList()
 
                 self.index[term].insert(artid, position if self.positional else None)
+
+            # INFO: Búsqueda semántica
+            if self.semantic:
+                self.update_chuncks(content, artid)
+
 
     def tokenize(self, text:str):
         """
