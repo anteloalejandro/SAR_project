@@ -522,6 +522,10 @@ class SAR_Indexer:
         if query is None or len(query) == 0:
             return [], None # el `, None` lo piden los tests
 
+        # Hacer búsqueda semántica en lugar de la búsqueda por términos
+        if self.semantic:
+            return self.solve_semantic_query(query), None # el `, None` lo piden los tests
+
         parsed = self.parse_query(query)
         queries = iter(parsed)
         first = next(queries)
@@ -540,7 +544,11 @@ class SAR_Indexer:
             else:
                 posting_list_acc &= self.get_posting(q)
         
-        return posting_list_acc.get_list(), None # el `, None` lo piden los tests
+        articles = posting_list_acc.get_list()
+        if self.semantic_ranking:
+            articles = self.semantic_reranking(query, articles)
+
+        return articles, None # el `, None` lo piden los tests
 
 
 
