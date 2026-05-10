@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, List, Union, Dict, overload
 import pickle
 import nltk
-from SAR_semantics import SentenceBertEmbeddingModel, BetoEmbeddingCLSModel, BetoEmbeddingModel, SpacyStaticModel
+from SAR_semantics import EmbeddingModel, SentenceBertEmbeddingModel, BetoEmbeddingCLSModel, BetoEmbeddingModel, SpacyStaticModel
 
 
 ## UTILIZAR PARA LA AMPLIACION
@@ -67,16 +67,16 @@ class SAR_Indexer:
         self.show_all = False # valor por defecto, se cambia con self.set_showall()
 
         # PARA LA AMPLIACION
-        self.semantic = None
+        self.semantic = None # WARN: Sin usar
         self.chuncks = []
         self.embeddings = []
         self.chunck_index = []
-        self.artid_to_emb = {}
+        self.artid_to_emb = {} # WARN: Sin usar
         self.kdtree = None
-        self.semantic_threshold = None
-        self.semantic_ranking = None # ¿¿ ranking de consultas binarias ??
-        self.model = None
-        self.MAX_EMBEDDINGS = 200 # número máximo de embedding que se extraen del kdtree en una consulta
+        self.semantic_threshold = None # WARN: Sin usar
+        self.semantic_ranking = None # ¿¿ ranking de consultas binarias ?? # WARN: Sin usar
+        self.model: EmbeddingModel | None = None
+        self.MAX_EMBEDDINGS = 200 # número máximo de embedding que se extraen del kdtree en una consulta # WARN: Sin usar
         
         
         
@@ -193,11 +193,14 @@ class SAR_Indexer:
         
         """
 
-        #1 - completar
+        # TODO: Falta:
+        # - actualizar self.embeddings y self.emb_to_artid
 
-        #2 - completar
+        sentences = nltk.sent_tokenize(txt, "spanish")
+        self.chuncks.append(sentences)
+        self.chunck_index.append(artid)
 
-        pass             
+        pass
         
 
     def create_kdtree(self):
@@ -210,8 +213,13 @@ class SAR_Indexer:
         # 2: Opcionalmente se puede guardar información del modelo semántico (kdtree y/o embeddings) en el SAR_Indexer
         
         """
-        print(f"Creating kdtree ...", end="")
-	    # completar
+        print("Creating kdtree ...", end="")
+	    
+        self.model = create_semantic_model(SEMANTIC_MODEL)
+        self.model.fit(self.chuncks)
+        self.kdtree = self.model.kdtree
+        self.embeddings = self.model.embeddings
+
         print("done!")
 
 

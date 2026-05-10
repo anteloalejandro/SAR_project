@@ -59,7 +59,7 @@ class SpacyStaticModel(EmbeddingModel):
             if len(tokens) == 0:
                 v = np.zeros(self.vector_length)
             else:
-                v = np.mean([tk.vector for tk in tokens], axis=0)
+                v = np.mean([tk.vector for tk in tokens], axis=0)  # pyright: ignore[reportCallIssue, reportArgumentType]
             vectors.append(v)
         return np.array(vectors)
 
