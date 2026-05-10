@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd $VIRTUAL_ENV/..
+
+python SAR_Indexer.py -P -S datasets/$1 output/$1
