@@ -68,7 +68,7 @@ class SAR_Indexer:
 
         # PARA LA AMPLIACION
         self.semantic = None
-        self.chuncks = []
+        self.chuncks: List[str] = []
         self.embeddings = []
         self.chunck_index = []
         self.artid_to_emb = {} # WARN: Sin usar
@@ -196,8 +196,8 @@ class SAR_Indexer:
         # - actualizar self.embeddings y self.emb_to_artid
 
         sentences = nltk.sent_tokenize(txt, "spanish")
-        self.chuncks.append(sentences)
-        self.chunck_index.append(artid)
+        self.chuncks.extend(sentences)
+        self.chunck_index.extend([artid] * len(sentences))
 
 
     def create_kdtree(self):
