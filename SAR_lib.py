@@ -1,5 +1,7 @@
 # versión 1.2
 
+import math
+import pprint
 import json
 import os
 import re
@@ -14,10 +16,10 @@ from SAR_semantics import EmbeddingModel, SentenceBertEmbeddingModel, BetoEmbedd
 ## UTILIZAR PARA LA AMPLIACION
 # Selecciona un modelo semántico
 SEMANTIC_MODEL = "SBERT"
-#SEMANTIC_MODEL = "BetoCLS"
-#SEMANTIC_MODEL = "Beto"
-#SEMANTIC_MODEL = "Spacy"
-#SEMANTIC_MODEL = "Spacy_noSW_noA"
+# SEMANTIC_MODEL = "BetoCLS"
+# SEMANTIC_MODEL = "Beto"
+# SEMANTIC_MODEL = "Spacy"
+# SEMANTIC_MODEL = "Spacy_noSW_noA"
 
 def create_semantic_model(modelname):
     assert modelname in ("SBERT", "BetoCLS", "Beto", "Spacy", "Spacy_noSW_noA")
@@ -70,11 +72,11 @@ class SAR_Indexer:
         self.semantic = None
         self.chuncks: List[str] = []
         self.embeddings = []
-        self.chunck_index = []
+        self.chunck_index: List[int] = []
         self.artid_to_emb = {} # WARN: Sin usar
         self.kdtree = None
         self.semantic_threshold = None
-        self.semantic_ranking = None # ¿¿ ranking de consultas binarias ?? # WARN: Sin usar
+        self.semantic_ranking = None # ¿¿ ranking de consultas binarias ??
         self.model: EmbeddingModel | None = None
         self.MAX_EMBEDDINGS = 200 # número máximo de embedding que se extraen del kdtree en una consulta # WARN: Sin usar
         
@@ -253,6 +255,8 @@ class SAR_Indexer:
         assert self.embeddings is not None
         K = len(self.embeddings)
 
+        # TODO: Se puede empezar con un valor de top_k grande y cortar a partir de donde
+        # se encuentre el embedding con distancia mayor al semantic threshold.
         top_k = 1
         # iteramos hasta que encontremos un documento que supere el threshold
         while True:
@@ -272,7 +276,6 @@ class SAR_Indexer:
             # aumenta el máximo de documentos a recuperar en la query
             top_k += 1
 
-        print(indexed_distances)
         # saca los artículos a partir de los índices
         return self.unique_in_order([self.chunck_index[i] for _, i in indexed_distances])
 
@@ -568,10 +571,7 @@ class SAR_Indexer:
         if self.semantic_ranking:
             articles = self.semantic_reranking(query, articles)
 
-        print(articles)
         return articles
-
-
 
 
     def get_posting(self, term:str):
@@ -734,10 +734,10 @@ class SAR_Indexer:
         results = []
         for query in ql:
             if len(query) > 0 and query[0] != '#':
-                r, _ = self.solve_query(query)
-                results.append(len(r))  # pyright: ignore[reportArgumentType]
+                r = self.solve_query(query)
+                results.append(len(r))
                 if verbose:
-                    print(f'{query}\t{len(r)}')  # pyright: ignore[reportArgumentType]
+                    print(f'{query}\t{len(r)}')
             else:
                 results.append(0)
                 if verbose:
@@ -776,10 +776,24 @@ class SAR_Indexer:
 
         """
 
-        result = len(self.solve_query(query))
-        print(f"{query}\t{result}")
+        articles = self.solve_query(query)
+        results = len(articles)
 
-        return result
+        # TODO: Mostrar resultado como el de references/Q1_rerank_SBERT.ref
+        n_docs = results if self.show_all else min(results, self.SHOW_MAX)
+        print("========================================")
+        for i, artid in enumerate(articles[:n_docs]):
+            article = self.articles[artid]
+            document = self.docs[article["document"]]
+            content = open(document).readlines()[article["relative_position"]]
+            object = json.loads(content)
+            doc_digits = math.floor(math.log10(n_docs)) + 1
+            art_digits = math.floor(math.log10(len(self.articles))) + 1
+            print(f"# {i+1:0{doc_digits}} ({artid:>{art_digits}}) {object['title']}:\t{object['url']}")
+        print("========================================")
+        print(f"Number of results: {results}")
+
+        return results
 
 
 
