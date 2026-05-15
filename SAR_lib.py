@@ -360,7 +360,8 @@ class SAR_Indexer:
             sys.exit(-1)
 
         # INFO: Para la búsqueda semántica
-        self.create_kdtree()
+        if self.semantic:
+            self.create_kdtree()
 
         #####################################################
         ## COMPLETAR SI ES NECESARIO FUNCIONALIDADES EXTRA ##
