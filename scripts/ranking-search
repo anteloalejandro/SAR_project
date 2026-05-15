@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for query in "${@:3}"; do
+for query in "${@:2}"; do
   if [[ $(echo "$query" | wc -w) -gt 1 ]]; then
     query=\"$query\"
   fi
@@ -8,4 +8,4 @@ for query in "${@:3}"; do
   queries="$queries $query"
 done
 
-python SAR_Searcher.py output/$1 -S $2 -Q "$queries"
+python SAR_Searcher.py output/$1 -R -Q "$queries"

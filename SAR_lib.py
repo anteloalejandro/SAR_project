@@ -195,7 +195,7 @@ class SAR_Indexer:
         # TODO: Falta:
         # - actualizar self.embeddings y self.emb_to_artid
 
-        sentences = nltk.sent_tokenize(txt, "spanish")
+        sentences = nltk.sent_tokenize(txt)
         self.chuncks.extend(sentences)
         self.chunck_index.extend([artid] * len(sentences))
 
@@ -253,11 +253,13 @@ class SAR_Indexer:
         assert self.embeddings is not None
         K = len(self.embeddings)
 
-        top_k = min(self.MAX_EMBEDDINGS, K)
+        top_k = 1
+        # iteramos hasta que encontremos un documento que supere el threshold
         while True:
-            # `query` devueve una tupla con los embeddings de cada chunk, seguidos del índice de su chunk
+            # `query` devueve una tupla con los embeddings de cada chunk, ordenados, seguidos del índice de su chunk
             indexed_distances = self.model.query(query, top_k)
-            greatest_distance,_ = indexed_distances[-1]
+            # sacamos de antemano el último para no contarlo después, ya que superaría el threshold
+            greatest_distance,_ = indexed_distances.pop()
             if (
                 # si no se ha establecido un threshold, se dan los resultados como buenos...
                 self.semantic_threshold is None
@@ -268,8 +270,9 @@ class SAR_Indexer:
             ): break
 
             # aumenta el máximo de documentos a recuperar en la query
-            top_k = min(top_k*2, K)
+            top_k += 1
 
+        print(indexed_distances)
         # saca los artículos a partir de los índices
         return self.unique_in_order([self.chunck_index[i] for _, i in indexed_distances])
 
@@ -539,8 +542,8 @@ class SAR_Indexer:
             return []
 
         # Hacer búsqueda semántica en lugar de la búsqueda por términos
-        # if self.semantic:
-        #     return self.solve_semantic_query(query)
+        if self.semantic_threshold:
+            return self.solve_semantic_query(query)
 
         parsed = self.parse_query(query)
         queries = iter(parsed)
