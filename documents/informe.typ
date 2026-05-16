@@ -1,5 +1,5 @@
 #import "@preview/ilm:2.0.0": *
-#import "@preview/calloutly:1.0.0" : callout-style, callout, note, tip, important, warning, caution
+#import "@preview/calloutly:1.0.0": callout, callout-style, caution, important, note, tip, warning
 
 #set text(lang: "es")
 #set figure(supplement: "Figura")
@@ -14,7 +14,7 @@
   external-link-circle: false,
   chapter-pagebreak: false,
   footer: "page-number-center",
-  paper-size: "a4"
+  paper-size: "a4",
 )
 
 #show: callout-style.with(style: "quarto")
@@ -54,7 +54,7 @@ Los documentos `.json` no son realmente archivos en formato JSON, sino que son c
     ]
   }
   ```,
-  caption: "Ejemplo de artículo"
+  caption: "Ejemplo de artículo",
 )
 
 Por cada artículo se tiene que generar otra ID incremental con la que identificarlo en el diccionario ```python self.articles```, que tiene como valores un diccionario con el documento al que pertenece (`document`) y su índice dentro de dicho documento (`relative_position`).
@@ -136,7 +136,7 @@ if len(term.split()) > 1:
     return self.get_positionals(term)
 else:
     return self.index[term] if term in self.index else PostingList()
-``` 
+```
 
 Aquí, el método ```python get_positionals()``` coge un _string_ con términos separados por espacios e itera por ellos, siguiendo estos pasos:
 - Por cada término en la búsqueda, coge todos los `artid` en su `PostingList` coincide con los de la `PostingList` del término anterior.
@@ -146,6 +146,69 @@ Aquí, el método ```python get_positionals()``` coge un _string_ con términos 
 
 == Similitud semántica
 
-=== Función ```python update_chunks()```
+=== Creación de _embeddings_
 
-Haciendo uso de la librería `nltk`, se cargan los chunks de `frases.txt`.
+En el méttodo `update_chuncks`, haciendo uso de la función `sent_tokenize` de la librería `nltk`, se cargan los _chunks_ de cada uno de los artículos. Esto se hace una vez para cada artículo.
+
+Los _chunks_ de todos los artículos se guardan en la lista ```python self.chuncks``` dentro de la clase `Sar_Indexer`, y por cada _chunk_ guardado se guarda su `artid` de origen en otra lista, ```python self.chunck_index```. Esta última lista se usará después para sacar a qué artículo corresponde cada _chunk_.
+
+Tras procesar todos los artículos, se llama a la función ```python create_kdtree()```. Esta función crea un modelo semántico con la función ```python create_semantic_model()```, incluida en el archivo `SAR_lib.py`, que permite crear el modelo semántico especificado en la variable global `SEMANTIC_MODEL` haciendo uso de los métodos en `SAR_semántics.py`.
+
+El modelo semántico se debe ajustar con los datos de entrenamiento, que son los _chunks_ que se han guardado previamente. El ajuste actualiza los atributos `kdtree` y `embeddings` *del modelo*, que se guardan también como atributos de `SAR_Indexer` para usarlos más tarde, durante la búsqueda.
+
+=== Resolución semántica de consultas
+
+En ```python solve_query()```, cuando se detecta que el argumento `semantic_threshold` está puesto, se asume que la consulta es semántica, por lo que directamente se devuelve el resultado de ```python solve_semantic_query()```.
+
+Esta última función carga el modelo semántico, le vuelve a establecer los atributos `kdtree` y `embeddings` que se habían quedado guardados en `SAR_Indexer`, calculan cuántos documentos tienen una cercanía con la consulta mayor que la especificada por `semantic_threshold`.
+
+El modelo semántico tiene un método ```python query(query, top_k)``` que devuevle el índice de los _chunks_ (junto a sus distancias) más cercanos a `query`.
+
+Para la resolución de la consulta empezamos con ```python top_k = 1```, que iremos incrementando hasta que el último resultado (y por tanto, el más lejano) supere el `semantic_threshold`. Una vez suceda esto, y habiendo exluído a este último resultado, tenemos una lista de índices de _chunks_, que se pueden convertir en una lista de `artid` usándolos como índice de `self.chunck_index`.
+
+```python
+[
+  self.chuck_index[i]
+  # indexed_distances es el resultado de self.model.query(), quitando el último elemento
+  for _, i in indexed_distances
+]
+```
+
+Sin embargo, con eso se consigue una lista de con `artid` repetidos, y usar un `set` quitaría las repeticiones pero cambiaría el orden. Para solucionar esto, se ha creado una función ```python unique_in_order(self, list, included_in)``` que elimina repeticiones y mantiene el orden de los elementos.
+
+```python
+def unique_in_order(self, list, included_in = None):
+    result = []
+    memo = set()
+
+    for item in list:
+        if item in memo or (
+            included_in is not None
+            and item not in included_in
+        ): continue
+
+        memo.add(item)
+        result.append(item)
+
+    return result
+```
+
+Por tanto, el resultado de la búsqueda semántica, una vez encontrados todos los elementos que no superan el `semantic_threshold`, es:
+
+```python
+return self.unique_in_order(
+  [self.chunck_index[i] for _, i in indexed_distances]
+)
+```
+
+=== _Reranking_ semántico de consultas
+
+El _reranking_ consiste en coger los resultados de una consulta y reordenarlos para mostrar primero los más relevantes.
+
+En concreto, la consulta realizada será la "normal", y el modelo semántico sólo se usará para reordenar los resultados.
+
+Al igual que en la búsqueda semántica, el primer paso es cargar el modelo semántico y reestablecer sus atributos `kdtree` y `embeddings`.
+
+La diferencia es que en este caso, lo que queremos es usar ```python self.model.query(query, top_k)``` para obtener los índices ordenados *hasta que salgan todos los índices de la búsqueda binaria*.
+
+De nuevo, se filtra la lista con ```python unique_in_order(retrieved_articles, articles)``` eliminar los repetidos y, con el segundo argumento, *filtrar* para dejar sólo los que aparecen en la búsqueda binaria.

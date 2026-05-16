@@ -779,7 +779,6 @@ class SAR_Indexer:
         articles = self.solve_query(query)
         results = len(articles)
 
-        # TODO: Mostrar resultado como el de references/Q1_rerank_SBERT.ref
         n_docs = results if self.show_all else min(results, self.SHOW_MAX)
         print("========================================")
         for i, artid in enumerate(articles[:n_docs]):
