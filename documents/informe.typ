@@ -59,7 +59,7 @@ Los documentos `.json` no son realmente archivos en formato JSON, sino que son c
 
 Por cada artículo se tiene que generar otra ID incremental con la que identificarlo en el diccionario ```python self.articles```, que tiene como valores un diccionario con el documento al que pertenece (`document`) y su índice dentro de dicho documento (`relative_position`).
 
-Haciendo uso del método ```python parse_article()``` de ```python SAR_Indexer``` se pasan los objetos JSON a un ```python Dict[str,str]``` que tiene, entre otras, la clave `all`, cuyo valor es la *combinación de todas las cadenas de texto* (título, resumen, secciones, etc.) separadas por un salto de línea. Precisamente el valor de la clave `all` es la cadena a tokenizar por defecto.
+Haciendo uso del método ```python parse_article()``` de `SAR_Indexer` se pasan los objetos JSON a un ```python Dict[str,str]``` que tiene, entre otras, la clave `all`, cuyo valor es la *combinación de todas las cadenas de texto* (título, resumen, secciones, etc.) separadas por un salto de línea. Precisamente el valor de la clave `all` es la cadena a tokenizar por defecto.
 
 Para procesar la cadena se siguen los siguientes pasos:
 
@@ -69,7 +69,7 @@ Para procesar la cadena se siguen los siguientes pasos:
 
 === La clase `PostingList`
 
-La ```python PostingList``` se ha definido en una clase aparte para ofrecer una interfaz consistente en caso de que hubiese que cambiar a futuro su estructura interna.
+La `PostingList` se ha definido en una clase aparte para ofrecer una interfaz consistente en caso de que hubiese que cambiar a futuro su estructura interna.
 
 Esta clase está formada por una variable `postings` de tipo ```python Dict[int, list[int]]```, donde las claves del diccionario son los _posting_ (en este caso, `artid`) y su valor asociado es una lista de las posiciones en las que aparece el término en el artículo. Según si se hace un índice posicional o no, se rellena la lista o se deja vacía al indexar.
 
@@ -116,7 +116,7 @@ for q in queries:
     else:
         posting_list_acc &= self.get_posting(q)
 
-return posting_list_acc.get_list(), None
+articles = posting_list_acc.get_list()
 ```
 
 === Búsqueda posicional
@@ -139,32 +139,38 @@ else:
 ```
 
 Aquí, el método ```python get_positionals()``` coge un _string_ con términos separados por espacios e itera por ellos, siguiendo estos pasos:
+
 - Por cada término en la búsqueda, coge todos los `artid` en su `PostingList` coincide con los de la `PostingList` del término anterior.
-  - Por cada artículo que coincide coge aquellas posiciones que son exactamente 1 mayores que alguno de las posiciones la iteración anterior.
+
+- Por cada artículo que coincide coge aquellas posiciones que son exactamente 1 mayores que alguno de las posiciones la iteración anterior.
 
 = Ampliaciones
 
 == Similitud semántica
 
+La búsqueda por similitud semántica consiste en obtener los artículos más relevantes para una _query_ en base la representación vectorial (o _embeddings_) de ambos: Cuanto más cerca está la _query_ de un documento, más importante es dicho documento.
+
+Consiste, por tanto, en dos pasos: La *creación de los _embeddings_* y la *resolución de la propia consulta*.
+
 === Creación de _embeddings_
 
-En el méttodo `update_chuncks`, haciendo uso de la función `sent_tokenize` de la librería `nltk`, se cargan los _chunks_ de cada uno de los artículos. Esto se hace una vez para cada artículo.
+En el método `update_chuncks`, haciendo uso de la función ```python nltk.sent_tokenize()```, se cargan los _chunks_ de cada uno de los artículos. Esto se hace una vez para cada artículo.
 
-Los _chunks_ de todos los artículos se guardan en la lista ```python self.chuncks``` dentro de la clase `Sar_Indexer`, y por cada _chunk_ guardado se guarda su `artid` de origen en otra lista, ```python self.chunck_index```. Esta última lista se usará después para sacar a qué artículo corresponde cada _chunk_.
+Los _chunks_ de todos los artículos se guardan en orden en la lista ```python self.chuncks``` dentro de la clase `Sar_Indexer`, y por cada _chunk_ guardado se guarda su `artid` de origen en otra lista, ```python self.chunck_index```. Esta última lista *se usará después para sacar a qué artículo corresponde cada _chunk_*.
 
-Tras procesar todos los artículos, se llama a la función ```python create_kdtree()```. Esta función crea un modelo semántico con la función ```python create_semantic_model()```, incluida en el archivo `SAR_lib.py`, que permite crear el modelo semántico especificado en la variable global `SEMANTIC_MODEL` haciendo uso de los métodos en `SAR_semántics.py`.
+Tras procesar todos los artículos, se llama a la función ```python self.create_kdtree()```. Esta función crea un modelo semántico con la función ```python create_semantic_model()```, incluida en el archivo `SAR_lib.py`, que permite crear el modelo semántico especificado en la variable global `SEMANTIC_MODEL` haciendo uso de los métodos en `SAR_semantics.py`.
 
-El modelo semántico se debe ajustar con los datos de entrenamiento, que son los _chunks_ que se han guardado previamente. El ajuste actualiza los atributos `kdtree` y `embeddings` *del modelo*, que se guardan también como atributos de `SAR_Indexer` para usarlos más tarde, durante la búsqueda.
+El modelo semántico se debe ajustar con los datos de entrenamiento, que son los _chunks_ que se han guardado previamente. El ajuste actualiza los atributos `kdtree` y `embeddings` *del modelo*, que se guardan *manualmente* también como atributos de `SAR_Indexer` para usarlos más tarde, durante la búsqueda.
 
 === Resolución semántica de consultas
 
-En ```python solve_query()```, cuando se detecta que el argumento `semantic_threshold` está puesto, se asume que la consulta es semántica, por lo que directamente se devuelve el resultado de ```python solve_semantic_query()```.
+En ```python self.solve_query()```, cuando se detecta que el argumento `semantic_threshold` está puesto, se asume que la consulta es semántica, por lo que directamente se devuelve el resultado de ```python self.solve_semantic_query()```.
 
 Esta última función carga el modelo semántico, le vuelve a establecer los atributos `kdtree` y `embeddings` que se habían quedado guardados en `SAR_Indexer`, calculan cuántos documentos tienen una cercanía con la consulta mayor que la especificada por `semantic_threshold`.
 
 El modelo semántico tiene un método ```python query(query, top_k)``` que devuevle el índice de los _chunks_ (junto a sus distancias) más cercanos a `query`.
 
-Para la resolución de la consulta empezamos con ```python top_k = 1```, que iremos incrementando hasta que el último resultado (y por tanto, el más lejano) supere el `semantic_threshold`. Una vez suceda esto, y habiendo exluído a este último resultado, tenemos una lista de índices de _chunks_, que se pueden convertir en una lista de `artid` usándolos como índice de `self.chunck_index`.
+Para la resolución de la consulta se empieza con ```python top_k = 1```, que irá incrementando hasta que el último resultado (y por tanto, el más lejano) supere el `semantic_threshold`. Una vez suceda esto, y habiendo exluído a este último resultado, tenemos una lista de índices de _chunks_, que se pueden convertir en una lista de `artid` usándolos como índice de `self.chunck_index`.
 
 ```python
 [
@@ -174,14 +180,14 @@ Para la resolución de la consulta empezamos con ```python top_k = 1```, que ire
 ]
 ```
 
-Sin embargo, con eso se consigue una lista de con `artid` repetidos, y usar un `set` quitaría las repeticiones pero cambiaría el orden. Para solucionar esto, se ha creado una función ```python unique_in_order(self, list, included_in)``` que elimina repeticiones y mantiene el orden de los elementos.
+Sin embargo, con eso se consigue una lista de con `artid` repetidos, y usar un `set` quitaría las repeticiones pero cambiaría el orden. Se ha solucionado escribiendo una función ```python unique_in_order(self, input, included_in)``` que elimina repeticiones y mantiene el orden de los elementos.
 
 ```python
-def unique_in_order(self, list, included_in = None):
+def unique_in_order(self, input, included_in = None):
     result = []
     memo = set()
 
-    for item in list:
+    for item in input:
         if item in memo or (
             included_in is not None
             and item not in included_in
@@ -201,14 +207,18 @@ return self.unique_in_order(
 )
 ```
 
-=== _Reranking_ semántico de consultas
+== _Reranking_ semántico de consultas
 
 El _reranking_ consiste en coger los resultados de una consulta y reordenarlos para mostrar primero los más relevantes.
 
-En concreto, la consulta realizada será la "normal", y el modelo semántico sólo se usará para reordenar los resultados.
+En concreto, se procesará la consulta usando `PostingList` y el modelo semántico sólo se usará para reordenar los resultados.
 
 Al igual que en la búsqueda semántica, el primer paso es cargar el modelo semántico y reestablecer sus atributos `kdtree` y `embeddings`.
 
-La diferencia es que en este caso, lo que queremos es usar ```python self.model.query(query, top_k)``` para obtener los índices ordenados *hasta que salgan todos los índices de la búsqueda binaria*.
+La diferencia es que en este caso, lo que queremos es usar ```python self.model.query(query, top_k)``` para obtener los índices ordenados *hasta que salgan todos los índices de la búsqueda por `PostingList`*.
 
-De nuevo, se filtra la lista con ```python unique_in_order(retrieved_articles, articles)``` eliminar los repetidos y, con el segundo argumento, *filtrar* para dejar sólo los que aparecen en la búsqueda binaria.
+En vez de ir de uno en uno, se cogen hasta ```python top_k = self.MAX_EMBEDDINGS``` _embeddings_, se calcula la lista de artículos con `unique_in_order` y se comprueba que no falte ninguno. Si faltasen artículos, se duplica el valor de `top_k` y se repite el proceso.
+
+Finalmente, se filtra la lista con ```python unique_in_order(retrieved_articles, articles)``` eliminar los repetidos, donde el segundo argumento sirve para *filtrar* dejando sólo los que aparecen en él.
+
+El resultado es, entonces, los mismos artículos que la búsqueda con `PostingList`, pero ordenador por relevancia.
