@@ -1,13 +1,12 @@
 # versión 1.2
 
 import math
-import pprint
 import json
 import os
 import re
 import sys
 from pathlib import Path
-from typing import Optional, List, Union, Dict, overload
+from typing import List, Dict
 import pickle
 import nltk
 from SAR_semantics import EmbeddingModel, SentenceBertEmbeddingModel, BetoEmbeddingCLSModel, BetoEmbeddingModel, SpacyStaticModel
@@ -526,7 +525,7 @@ class SAR_Indexer:
 
         return query_list
 
-    def solve_query(self, query:str, prev:Dict={}):
+    def solve_query(self, query:str):
         """
         NECESARIO PARA TODAS LAS VERSIONES
 
@@ -676,7 +675,6 @@ class SAR_Indexer:
         # crea una PostingList con todos los articulos
         # WARN: lo hace posicional sin importar si el índice es posicional o no
         # si el índice no es posicional, la búsqueda de cadenas rodeadas por '"' fallará.
-        # WARN: no tiene en cuenta si es posicional, podría ser un problema
         all_postings = PostingList()
         for posting in self.index.values():
             all_postings |= posting
@@ -751,8 +749,8 @@ class SAR_Indexer:
             if len(line) > 0 and line[0] != '#':
                 query, ref = line.split('\t')
                 reference = int(ref)
-                result, _ = self.solve_query(query)
-                result = len(result)  # pyright: ignore[reportArgumentType]
+                result = self.solve_query(query)
+                result = len(result)
                 if reference == result:
                     print(f'{query}\t{result}')
                 else:
@@ -799,6 +797,14 @@ class SAR_Indexer:
 class PostingList:
 
     def __init__(self, postings: list[int] | None = None):
+        """
+        Crea una nueva posting list.
+
+        Se puede inicializar con una lista de postings o no.
+
+        No se puede inicializar con una posting list posicional,
+        las posiciones deben añadirse una a una tras la creación de la `PostingList`.
+        """
         if postings is None:
             postings = []
         self.postings: Dict[int, list[int]] = {}
@@ -861,7 +867,7 @@ class PostingList:
         """
 
         new_postings = self.postings.copy()
-        for (posting, _) in other.postings.items():
+        for posting in other.postings.keys():
             self._append_posting(posting, None, new_postings)
 
         result = PostingList()
@@ -880,6 +886,12 @@ class PostingList:
         position: int | None = None,
         posting_list: Dict[int, list[int]] | None = None,
     ):
+        """
+        Hace una de tres cosas, según los argumentos:
+        - `posting` -> inserta el `posting` si no existe en la `PostingList`
+        - `position` -> si no es `None`, añade `position` al `posting` dado
+        - `posting_list` -> elige en que diccionario hacer la inserción, por defecto `self.postings`
+        """
         if posting_list is None:
             posting_list = self.postings
 
