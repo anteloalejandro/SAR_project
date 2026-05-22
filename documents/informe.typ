@@ -10,7 +10,7 @@
   date: datetime.today(),
   date-format: "[day] / [month] / [year repr:full]",
   raw-text: "use-typst-default",
-  table-of-contents: none,
+  table-of-contents: outline(title: "Índice"),
   external-link-circle: false,
   chapter-pagebreak: false,
   footer: "page-number-center",
@@ -91,11 +91,11 @@ Una vez tratada la consulta, se debe diferenciar entre las 3 operaciones que pue
 
 + *Intersección `AND`.* Se da cuándo se separan dos partes de la consulta mediante espacio en blanco. En este caso se guarda el resultado de la operación `&` entre las `PostingList`.
 
-+ *Diferencia `NOT AND`.* Se ha de calcular cuando los términos se separan por un `NOT`. De forma similar a la intersección, se guarda el resultado de la operación `|`.
++ *Diferencia `NOT AND`.* Se ha de calcular cuando los términos se separan por un `NOT`. De forma similar a la intersección, se guarda el resultado de la operación `-`.
 
 La recuperación de documentos relevantes, por tanto, se divide en dos pasos.
 
-Primero, se coge el primer término, `first`, y se crea una `PostingList` a través de él. Si `first` es `NOT`, se sacará la negación del siguiente término.
+Primero, se coge el primer término, `first`, y se crea una `PostingList` a partir de él. Si `first` es `NOT`, se sacará la negación del siguiente término.
 
 ```python
 if first == "NOT":
@@ -140,7 +140,7 @@ else:
 
 Aquí, el método ```python get_positionals()``` coge un _string_ con términos separados por espacios e itera por ellos, siguiendo estos pasos:
 
-- Por cada término en la búsqueda, coge todos los `artid` en su `PostingList` coincide con los de la `PostingList` del término anterior.
+- Por cada término en la búsqueda, coge todos los `artid` en su `PostingList` que coinciden con los de la `PostingList` del término anterior.
 
 - Por cada artículo que coincide coge aquellas posiciones que son exactamente 1 mayores que alguno de las posiciones la iteración anterior.
 
